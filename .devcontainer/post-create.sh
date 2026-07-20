@@ -90,7 +90,8 @@ if [ "$ARCH" = "amd64" ]; then
         step_warn "k6 deb install failed"
     fi
 elif [ "$ARCH" = "arm64" ]; then
-    K6_VER=$(curl -fsSL https://api.github.com/repos/grafana/k6/releases/latest | grep tag_name | head -1 | tr -dc 'v0-9.')
+    K6_VER=$(curl -fsSLI --max-time 15 -o /dev/null -w '%{url_effective}' \
+        https://github.com/grafana/k6/releases/latest | sed 's#.*/##')
     if [ -n "$K6_VER" ]; then
         curl -fsSL "https://github.com/grafana/k6/releases/download/${K6_VER}/k6-${K6_VER}-linux-arm64.tar.gz" \
             | sudo tar -xz --strip-components=1 -C /usr/local/bin/ 2>/dev/null \
@@ -289,13 +290,11 @@ else
 fi
 
 # ─── Step 9.4: TFLint (cosign-free install) ─────────────────────────────────
-# The terraform devcontainer feature installs the latest cosign (3.x) to verify
-# TFLint's signature, but cosign 3.x is incompatible with the Rekor log-query
-# API and aborts the whole feature install ("invalid signature when validating
-# IEEE_P1363 encoded signature"). We therefore set tflint=none in the feature
-# and install the pinned TFLint release directly here — no cosign required.
+# TFLint is installed separately from Terraform because cosign 3.x is
+# incompatible with the Rekor log-query API and aborts signature validation
+# ("invalid signature when validating IEEE_P1363 encoded signature").
 
-TFLINT_VERSION="0.61.0"
+TFLINT_VERSION="0.63.1"
 step_start "🧹" "Installing TFLint v${TFLINT_VERSION} (cosign-free)..."
 if command -v tflint &>/dev/null && tflint --version 2>/dev/null | grep -q "$TFLINT_VERSION"; then
     step_done "TFLint v${TFLINT_VERSION} already installed"
@@ -303,18 +302,23 @@ else
     TFLINT_ARCH=$(dpkg --print-architecture)
     if [ "$TFLINT_ARCH" = "amd64" ] || [ "$TFLINT_ARCH" = "arm64" ]; then
         TFLINT_TMP=$(mktemp -d)
-        TFLINT_URL="https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/tflint_linux_${TFLINT_ARCH}.zip"
+        # Save the download under its published asset name (arch-derived, so
+        # both amd64 and arm64 hosts work). `sha256sum -c` resolves the file
+        # by the name recorded in checksums.txt, so a generic "tflint.zip"
+        # target fails the integrity check even when the bytes are correct.
+        TFLINT_ZIP="tflint_linux_${TFLINT_ARCH}.zip"
+        TFLINT_URL="https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/${TFLINT_ZIP}"
         TFLINT_SHA_URL="https://github.com/terraform-linters/tflint/releases/download/v${TFLINT_VERSION}/checksums.txt"
-        if curl -fsSL "$TFLINT_URL" -o "$TFLINT_TMP/tflint.zip" \
+        if curl -fsSL "$TFLINT_URL" -o "$TFLINT_TMP/${TFLINT_ZIP}" \
             && curl -fsSL "$TFLINT_SHA_URL" -o "$TFLINT_TMP/checksums.txt" \
             && (cd "$TFLINT_TMP" && grep -E " tflint_linux_${TFLINT_ARCH}\.zip$" checksums.txt | sha256sum -c -) \
-            && unzip -o -q "$TFLINT_TMP/tflint.zip" -d "$TFLINT_TMP" \
+            && unzip -o -q "$TFLINT_TMP/${TFLINT_ZIP}" -d "$TFLINT_TMP" \
             && sudo install -m 0755 "$TFLINT_TMP/tflint" /usr/local/bin/tflint; then
             rm -rf "$TFLINT_TMP"
             step_done "TFLint $(tflint --version 2>/dev/null | head -1)"
         else
             rm -rf "$TFLINT_TMP"
-            step_warn "TFLint install failed — check network access to github.com"
+            step_warn "TFLint install failed — download or checksum verification error"
         fi
     else
         step_warn "TFLint skipped: unsupported architecture $TFLINT_ARCH (supported: amd64, arm64)"
@@ -387,20 +391,25 @@ fi
 # ─── Step 12: Gitleaks (secret scanner) ────────────────────────────────────
 
 step_start "🔐" "Installing gitleaks secret scanner..."
-GITLEAKS_VERSION=$(curl -fsSL "https://api.github.com/repos/gitleaks/gitleaks/releases/latest" 2>/dev/null | jq -r '.tag_name' 2>/dev/null | sed 's/^v//' || echo '')
-# Map uname -m to the gitleaks archive architecture label
-case "$(uname -m)" in
-    aarch64|arm64) GITLEAKS_ARCH="arm64" ;;
-    *)             GITLEAKS_ARCH="x64"   ;;
+# The base image supports amd64 and arm64 only; keep release assets aligned.
+case "$(dpkg --print-architecture)" in
+    amd64) GITLEAKS_ARCH="x64" ;;
+    arm64) GITLEAKS_ARCH="arm64" ;;
+    *)     GITLEAKS_ARCH="" ;;
 esac
-if [ -n "$GITLEAKS_VERSION" ] && [ "$GITLEAKS_VERSION" != "null" ]; then
+if [ -z "$GITLEAKS_ARCH" ]; then
+    step_warn "gitleaks skipped: unsupported architecture $(dpkg --print-architecture) (supported: amd64, arm64)"
+else
+    GITLEAKS_VERSION=$(curl -fsSL "https://api.github.com/repos/gitleaks/gitleaks/releases/latest" 2>/dev/null | jq -r '.tag_name' 2>/dev/null | sed 's/^v//' || echo '')
+fi
+if [ -n "$GITLEAKS_ARCH" ] && [ -n "$GITLEAKS_VERSION" ] && [ "$GITLEAKS_VERSION" != "null" ]; then
     if curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_${GITLEAKS_ARCH}.tar.gz" \
         | sudo tar -xz -C /usr/local/bin gitleaks 2>/dev/null; then
         step_done "gitleaks ${GITLEAKS_VERSION} installed (${GITLEAKS_ARCH})"
     else
         step_warn "gitleaks binary download failed (pre-commit hook will soft-skip)"
     fi
-else
+elif [ -n "$GITLEAKS_ARCH" ]; then
     step_warn "gitleaks version lookup failed (pre-commit hook will soft-skip)"
 fi
 
@@ -415,7 +424,19 @@ else
     step_warn "Azure CLI config update failed"
 fi
 
-# ─── Step 14: MCP config & final verification ─────────────────────────────
+# ─── Step 14: Bicep CLI after persisted mounts ─────────────────────────────
+
+step_start "🏗️ " "Ensuring Bicep CLI is available..."
+if az bicep version --only-show-errors >/dev/null 2>&1; then
+    step_done "$(az bicep version --only-show-errors 2>/dev/null | head -1)"
+elif az bicep install --only-show-errors >/dev/null 2>&1 \
+    && az bicep version --only-show-errors >/dev/null 2>&1; then
+    step_done "$(az bicep version --only-show-errors 2>/dev/null | head -1) installed after mounts initialized"
+else
+    step_warn "Bicep install failed — IaC validation will be unavailable"
+fi
+
+# ─── Step 15: MCP config & final verification ─────────────────────────────
 
 step_start "🔍" "Verifying installations & MCP config..."
 
@@ -447,12 +468,6 @@ default_drawio = {
     "args": ["run", "-P", "--no-check", "--cached-only", "${workspaceFolder}/tools/mcp-servers/drawio/src/index.ts"],
 }
 
-default_azure_mcp = {
-    "type": "stdio",
-    "command": "npx",
-    "args": ["-y", "@azure/mcp@latest", "server", "start"],
-}
-
 data = {"servers": {}}
 
 if config_path.exists():
@@ -469,7 +484,9 @@ servers = data.setdefault("servers", {})
 servers.setdefault("azure-pricing", default_azure_pricing)
 servers.setdefault("github", default_github)
 servers.setdefault("drawio", default_drawio)
-servers.setdefault("azure-mcp", default_azure_mcp)
+# Azure MCP is provided by the ms-azuretools.vscode-azure-mcp-server extension
+# (declared in devcontainer.json customizations.vscode.extensions) — no
+# npx-launched stdio server is registered here to avoid a duplicate server.
 config_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 PY
 
@@ -497,6 +514,14 @@ if [ -f "tools/scripts/validate-tool-versions.mjs" ]; then
         && echo "        Tool pins:      ✅ all ≥ minimum" \
         || echo "        Tool pins:      ⚠️  one or more tools below pinned minimum (see tools/registry/tool-version-pins.json)"
 fi
+
+echo ""
+echo "        ⚠️  Azure Tools pack (ms-vscode.vscode-node-azure-pack) bundles"
+echo "           ms-azuretools.vscode-azure-github-copilot and"
+echo "           ms-windows-ai-studio.windows-ai-studio — both inflate Copilot"
+echo "           chat context (~5-7k tokens/turn each). Disable both manually"
+echo "           in the Extensions view; APEX's own agent set already covers"
+echo "           their scope."
 
 step_done "All verifications complete"
 
