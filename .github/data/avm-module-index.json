@@ -1,7 +1,7 @@
 {
   "$schema": null,
   "schema_version": "avm-module-index-v1",
-  "generated_at": "2026-07-07T11:12:59.580Z",
+  "generated_at": "2026-07-20T09:22:04.752Z",
   "sources": {
     "bicep": "https://azure.github.io/Azure-Verified-Modules/module-indexes/BicepResourceModules.csv",
     "terraform": "https://azure.github.io/Azure-Verified-Modules/module-indexes/TerraformResourceModules.csv"
@@ -51,7 +51,7 @@
       "source": "br/public:avm/res/api-center/service",
       "provider_namespace": "Microsoft.ApiCenter",
       "resource_type": "services",
-      "module_status": "Proposed",
+      "module_status": "Available",
       "display_name": "API Center Service",
       "repo_url": "https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/api-center/service",
       "alternative_names": ""
@@ -6706,9 +6706,9 @@
       "source": "Azure/avm-res-keyvault-managedhsm/azurerm",
       "provider_namespace": "Microsoft.KeyVault",
       "resource_type": "managedHSMs",
-      "module_status": "Proposed",
+      "module_status": "Available",
       "display_name": "Key Vault Managed HSM",
-      "repo_url": "https://github.com/Azure/terraform-azurerm-avm-res-keyvault-managedhsm",
+      "repo_url": "https://github.com/Azure/terraform-azure-avm-res-keyvault-managedhsm",
       "alternative_names": "mHSM"
     },
     {
