@@ -24,17 +24,17 @@ domain-specific knowledge modules that activate automatically based on prompt ke
 | ----------------- | ----------------------------------------------------- | ----------------------------------------- |
 | `python-diagrams` | WAF/cost/compliance charts and Python diagrams        | "WAF chart", "cost chart", "create chart" |
 | `mermaid`         | Inline Mermaid diagrams for markdown                  | "mermaid diagram", "flowchart"            |
-| `drawio`          | Draw.io diagrams with Azure icon libraries            | "draw.io diagram"                         |
 | `azure-adr`       | Create Architecture Decision Records with WAF mapping | "create ADR", "document decision"         |
 
 ### Category 3: Workflow & Tool Integration
 
 | Skill                 | Description                               | Triggers                                                                        |
 | --------------------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
+| `agent-authoring`   | Create and restructure Copilot agents     | "create agent", "agent architecture", "reduce agent tokens"                  |
 | `github-operations` | Branch naming, commits, PRs, CLI, Actions | "commit", "create PR", "gh command"                                             |
 | `docs-writer`       | Repo-aware documentation maintenance      | "update docs", "check staleness"                                                |
 | `sensei`            | Iteratively improve skill frontmatter     | "run sensei", "improve skill", "fix frontmatter"                                |
-| `vendor-prompting`  | Audit Claude / GPT-5.5 agents and prompts | "audit agent", "claude prompting", "gpt-5.5 prompting", "vendor best practices" |
+| `vendor-prompting`  | Audit Claude / GPT-5.6 agents and prompts | "audit agent", "claude prompting", "gpt-5.6 prompting", "vendor best practices" |
 
 ## Usage
 
@@ -44,7 +44,7 @@ Skills activate when your prompt matches their trigger keywords:
 
 ```text
 "Create an architecture diagram for the ecommerce project"
-→ drawio skill activates
+→ python-diagrams skill activates
 ```
 
 ### Explicit Invocation
@@ -61,7 +61,7 @@ Agents can invoke skills through self-referencing handoffs:
 
 ```text
 Architect agent → "▶ Generate Architecture Diagram" button
-→ Uses drawio skill
+→ Uses python-diagrams skill
 ```
 
 ## Skill vs Agent

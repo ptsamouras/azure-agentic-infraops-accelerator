@@ -15,7 +15,7 @@
 // Linked docs:
 //   - docs/devcontainer-hygiene.md (rationale + per-developer cleanup)
 //   - .vscode/extensions.json (unwantedRecommendations dialog)
-
+//
 import { existsSync, readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";

@@ -17,7 +17,7 @@ file's `model:` value must equal the target agent's `model:` value.
 # .prompt.md
 ---
 agent: 03-Architect
-model: "Claude Opus 4.8" # MUST match agent's model:
+model: "Claude Opus 5" # MUST match agent's model:
 ---
 ```
 
@@ -37,7 +37,7 @@ stale during model rollouts.
 # Bad
 handoffs:
   - agent: 03-Architect
-    model: "Claude Opus 4.8"   # redundant — matches Architect's own
+    model: "Claude Opus 5"   # redundant — matches Architect's own
     prompt: "..."
 
 # Good
@@ -48,7 +48,7 @@ handoffs:
 
 ## Rule R-X-3 — Frontmatter model style
 
-> Source: [agent-authoring.instructions.md](../../../instructions/agent-authoring.instructions.md#L113-L120)
+> Source: [agent-authoring.instructions.md](../../../instructions/agent-authoring.instructions.md#frontmatter-rules)
 > (existing repo convention).
 
 **Rule** (`frontmatter-model-style-001`):
@@ -62,7 +62,7 @@ handoffs:
 
 ## Rule R-X-4 — Handoff prompt enrichment
 
-> Source: [agent-authoring.instructions.md](../../../instructions/agent-authoring.instructions.md#L471-L478)
+> Source: [agent-authoring.instructions.md](../../../instructions/agent-authoring.instructions.md#handoff-rules)
 > (existing repo convention).
 
 **Rule** (`handoff-enrichment-001`): every `handoffs[].prompt` must
@@ -92,8 +92,7 @@ handoffs:
 
 ## Rule R-X-5 — Decision logging
 
-> Source: [agent-authoring.instructions.md](../../../instructions/agent-authoring.instructions.md)
-> "Decision Logging" section.
+> Source: [decision-logging.md](../../agent-authoring/references/decision-logging.md).
 
 **Rule** (reviewer-only): when an agent makes a significant choice
 (architecture pattern, SKU/tier selection, deployment strategy, IaC
@@ -125,7 +124,7 @@ in [checklists.md](checklists.md).
 
 **Reviewer hint**: examples should appear at the END of the agent
 body (both vendors agree). Claude wraps in `<example>` /
-`<examples>`; GPT-5.5 uses fenced code blocks. Keep examples under
+`<examples>`; GPT-5.6-Terra uses fenced code blocks. Keep examples under
 12 lines.
 
 ## Rule R-X-7 — Language calibration
