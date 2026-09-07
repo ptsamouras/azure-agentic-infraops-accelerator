@@ -102,8 +102,8 @@ Use the same sidecar-aware / legacy fallback rule documented under Gate 1.
 ```text
 📝 IMPLEMENTATION PLAN COMPLETE
 Artifact: agent-output/{project}/04-implementation-plan.md
-Dependency Diagram: agent-output/{project}/04-dependency-diagram.drawio
-Runtime Diagram: agent-output/{project}/04-runtime-diagram.drawio
+Dependency Diagram: agent-output/{project}/04-dependency-diagram.{py,png,svg}
+Runtime Diagram: agent-output/{project}/04-runtime-diagram.{py,png,svg}
 Deployment: {Phased (N phases) | Single}
 ✅ Next: IaC Implementation (Step 5)
 💡 SESSION BREAK RECOMMENDED: Start a fresh chat for IaC code generation.
@@ -193,14 +193,14 @@ subagents that match their own tier or below:
 
 | Step agent (tier)               | Subagents it dispatches via `#runSubagent`                        |
 | ------------------------------- | ----------------------------------------------------------------- |
-| 02-Requirements (Sonnet 4.6)    | challenger-review-subagent (GPT-5.5 — within ceiling)             |
+| 02-Requirements (Sonnet 5)      | challenger-review-subagent (GPT-5.6-Terra — within ceiling)       |
 | 03-Architect (Opus)             | cost-estimate-subagent (codex), challenger-review-subagent        |
 | 05-IaC Planner (Opus)           | challenger-review-subagent                                        |
-| 06b-Bicep CodeGen (GPT-5.5)     | bicep-validate-subagent, bicep-whatif-subagent (Sonnet 4.6)       |
-| 06t-Terraform CodeGen (GPT-5.5) | terraform-validate-subagent, terraform-plan-subagent (Sonnet 4.6) |
-| 07b-Bicep Deploy (GPT-5.5)      | bicep-whatif-subagent (Sonnet 4.6)                                |
-| 07t-Terraform Deploy (GPT-5.5)  | terraform-plan-subagent (Sonnet 4.6)                              |
-| 04g-Governance (GPT-5.5)        | challenger-review-subagent                                        |
+| 06b-Bicep CodeGen (Sonnet 5)    | bicep-validate-subagent, bicep-whatif-subagent (Sonnet 5)         |
+| 06t-Terraform CodeGen (Sonnet 5)| terraform-validate-subagent, terraform-plan-subagent (Sonnet 5)   |
+| 07b-Bicep Deploy (GPT-5.6-Luna) | bicep-whatif-subagent (Sonnet 5)                                  |
+| 07t-Terraform Deploy (GPT-5.6-Luna) | terraform-plan-subagent (Sonnet 5)                            |
+| 04g-Governance (GPT-5.6-Luna)   | challenger-review-subagent                                        |
 
 **NEVER call `#runSubagent` from within an agent for a target that needs
 `askQuestions`.** The `askQuestions` tool presents interactive UI panels
@@ -216,5 +216,5 @@ multi-pass rotating lens reviews are opt-in for complex projects; cost-estimate-
 at Steps 2 and 7; the `azure-governance-discovery` skill runs at Step 3.5 (Governance agent).
 
 **Pricing Accuracy Gate (Steps 2 & 7)**: All prices must originate from
-`cost-estimate-subagent` (Codex + Azure Pricing MCP). Never write dollar
+`cost-estimate-subagent` (Azure Resource Manager MCP). Never write dollar
 figures from parametric knowledge.

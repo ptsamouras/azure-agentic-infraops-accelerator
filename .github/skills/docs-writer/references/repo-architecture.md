@@ -25,9 +25,6 @@ apex/  (APEX)
 ├── infra/bicep/             # Bicep module library
 ├── tools/
 │   ├── apex-recall/        # Progressive session recall CLI
-│   ├── mcp-servers/
-│   │   ├── azure-pricing/  # Azure Pricing MCP server
-│   │   └── drawio/         # Draw.io MCP server
 │   ├── registry/           # Agent registry + count manifest
 │   ├── schemas/            # JSON schemas
 │   └── scripts/            # Validation and maintenance scripts
@@ -43,21 +40,21 @@ See `tools/registry/count-manifest.json` for canonical counts.
 
 | Agent             | File                             | Model                     | Step | Artifacts                       |
 | ----------------- | -------------------------------- | ------------------------- | ---- | ------------------------------- |
-| Orchestrator      | `01-orchestrator.agent.md`       | MAI-Code-1-Flash          | All  | Orchestration                   |
-| Requirements      | `02-requirements.agent.md`       | Claude Sonnet 4.6         | 1    | `01-requirements.md`            |
-| Architect         | `03-architect.agent.md`          | Opus 4.7 (High reasoning) | 2    | `02-architecture-assessment.md` |
-| Design            | `04-design.agent.md`             | Sonnet 4.6                | 3    | `03-des-*.{drawio,py,png,md}`   |
-| Governance        | `04g-governance.agent.md`        | GPT-5.5                   | 3.5  | `04-governance-constraints.md`  |
-| IaC Plan          | `05-iac-planner.agent.md`        | Opus 4.7 (High reasoning) | 4    | `04-implementation-plan.md`     |
-| Bicep Code        | `06b-bicep-codegen.agent.md`     | GPT-5.5                   | 5b   | Bicep in `infra/bicep/`         |
-| Bicep Deploy      | `07b-bicep-deploy.agent.md`      | GPT-5.5                   | 6b   | `06-deployment-summary.md`      |
-| Terraform Code    | `06t-terraform-codegen.agent.md` | GPT-5.5                   | 5t   | Terraform in `infra/terraform/` |
-| Terraform Deploy  | `07t-terraform-deploy.agent.md`  | GPT-5.5                   | 6t   | `06-deployment-summary.md`      |
-| As-Built          | `08-as-built.agent.md`           | GPT-5.5                   | 7    | `07-ab-*.md` docs suite         |
-| Diagnose          | `09-diagnose.agent.md`           | Opus 4.7                  | —    | Diagnostic reports              |
-| Challenger        | `10-challenger.agent.md`         | GPT-5.5                   | —    | Challenge findings              |
-| Context Optimizer | `11-context-optimizer.agent.md`  | Opus 4.7 (High reasoning) | —    | Optimization reports            |
-| E2E Orchestrator  | `e2e-orchestrator.agent.md`      | GPT-5.5                   | All  | E2E evaluation loop             |
+| Orchestrator      | `01-orchestrator.agent.md`       | MAI-Code-1.1-Flash        | All  | Orchestration                   |
+| Requirements      | `02-requirements.agent.md`       | Claude Sonnet 5           | 1    | `01-requirements.md`            |
+| Architect         | `03-architect.agent.md`          | Claude Opus 5             | 2    | `02-architecture-assessment.md` |
+| Design            | `04-design.agent.md`             | Sonnet 5                  | 3    | `03-des-*.{py,png,svg,md}`      |
+| Governance        | `04g-governance.agent.md`        | GPT-5.6-Luna              | 3.5  | `04-governance-constraints.md`  |
+| IaC Plan          | `05-iac-planner.agent.md`        | Claude Opus 5             | 4    | `04-implementation-plan.md`     |
+| Bicep Code        | `06b-bicep-codegen.agent.md`     | Claude Sonnet 5           | 5b   | Bicep in `infra/bicep/`         |
+| Bicep Deploy      | `07b-bicep-deploy.agent.md`      | GPT-5.6-Luna              | 6b   | `06-deployment-summary.md`      |
+| Terraform Code    | `06t-terraform-codegen.agent.md` | Claude Sonnet 5           | 5t   | Terraform in `infra/terraform/` |
+| Terraform Deploy  | `07t-terraform-deploy.agent.md`  | GPT-5.6-Luna              | 6t   | `06-deployment-summary.md`      |
+| As-Built          | `08-as-built.agent.md`           | Claude Sonnet 5           | 7    | `07-ab-*.md` docs suite         |
+| Diagnose          | `09-diagnose.agent.md`           | GPT-5.6-Terra             | —    | Diagnostic reports              |
+| Challenger        | `10-challenger.agent.md`         | GPT-5.6-Luna              | —    | Challenge findings              |
+| Context Optimizer | `11-context-optimizer.agent.md`  | Claude Sonnet 5           | —    | Optimization reports            |
+| E2E Orchestrator  | `e2e-orchestrator.agent.md`      | GPT-5.6-Terra             | All  | E2E evaluation loop             |
 
 ### Validation Subagents (in `_subagents/`)
 
@@ -66,7 +63,7 @@ See `tools/registry/count-manifest.json` for canonical counts.
 | bicep-validate-subagent     | `bicep-validate-subagent.agent.md`     | Lint + AVM/security code review     |
 | bicep-whatif-subagent       | `bicep-whatif-subagent.agent.md`       | Deployment preview (what-if)        |
 | challenger-review-subagent  | `challenger-review-subagent.agent.md`  | Adversarial artifact review         |
-| cost-estimate-subagent      | `cost-estimate-subagent.agent.md`      | Azure Pricing MCP queries           |
+| cost-estimate-subagent      | `cost-estimate-subagent.agent.md`      | ARM MCP pricing queries             |
 | terraform-plan-subagent     | `terraform-plan-subagent.agent.md`     | Deployment preview (terraform plan) |
 | terraform-validate-subagent | `terraform-validate-subagent.agent.md` | Lint + AVM-TF/security code review  |
 
@@ -183,7 +180,7 @@ Step 1          Step 2            Step 3         Step 4
 Requirements → Architecture →  Design       → Planning
 (01-*.md)     (02-*.md)       (03-des-*)     (04-*.md)
                                   │
-                                  ├─ Diagrams (03-des-diagram.drawio)
+                                  ├─ Diagrams (03-des-diagram.{py,png,svg})
                                   ├─ ADRs (03-des-adr-*.md)
                                   └─ Cost Estimate (03-des-cost-estimate.md)
 
@@ -248,8 +245,7 @@ These skills are explicitly referenced in agent body text via mandatory
 | ------------------- | ---------------------------------------------------------- |
 | `azure-defaults`    | all primary agents                                         |
 | `azure-artifacts`   | requirements, architect, iac-planner, deploy, orchestrator |
-| `drawio`            | design, architect, as-built agents                         |
-| `python-diagrams`   | architect, as-built agents                                 |
+| `python-diagrams`   | architect, design, iac-planner, as-built agents             |
 | `azure-adr`         | design agent                                               |
 | `github-operations` | orchestrator, iac-planner agents                           |
 

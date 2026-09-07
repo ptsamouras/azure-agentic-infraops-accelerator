@@ -10,7 +10,7 @@
 | Instructions    | A     | 26 instructions; 0 orphaned refs; all applyTo globs have matching files | Monitor via `lint:glob-audit`              |
 | Infrastructure  | A-    | Bicep + Terraform merged; IaC content archived as .tar.gz (by design)   | Expand Terraform E2E templates when needed |
 | Documentation   | A     | Docs fresh; no stale files; lint:md 0 errors; freshness report clean    | Run doc-gardening after structural changes |
-| CI / Validation | A     | Core repo lint clean; drawio-mcp-server suppressed via local config     | Monitor via `lint:md`                      |
+| CI / Validation | A     | Core repository validation is clean                                    | Monitor via `validate:all`                 |
 | Context Budget  | A     | Agents -18%, Skills -46%, Instructions -32% vs baseline (stable)        | Quarterly audit via AGENTS.md checklist    |
 | Backlog         | A     | 1 active item: E2E lessons                                              | Monitor E2E improvements                   |
 
@@ -149,6 +149,7 @@
 | 2026-05-12 | CI / Validation | 7 missing-prompt-file errors in `architecture-explorer-graph.json` resolved: paths corrected from `.github/prompts/` to `.github/prompts/utility_prompts/`. `06t-terraform-codegen` governance guardrail restored (now references `azurePropertyPath` field in Phase 1.5).                                                                                                                                                            |
 | 2026-05-14 | Agents          | `09-Diagnose` migrated to `GPT-5.5`; agent and `diagnose-resource.prompt.md` converted from Claude XML blocks to outcome-first GPT-5.5 sections while preserving approval-first diagnostics.                                                                                                                                                                                                                                          |
 | 2026-05-15 | Agents          | `06b-Bicep CodeGen` + `06t-Terraform CodeGen` migrated `GPT-5.5` → `Claude Sonnet 4.6`. Frontmatter + registry + catalog `use_for` updated; bodies retain GPT-5.5 outcome-first skeleton with only the existing `## Output Contract` heading wrapped as an `<output_contract>` XML block to satisfy `claude-output-contract-001`. All verbatim invariants preserved byte-exact. `lint:vendor-prompting` clean (0 errors, 0 warns).    |
+| 2026-06-30 | Agents          | Sonnet cohort (11 agents/subagents) migrated `Claude Sonnet 4.6` → `Claude Sonnet 5`; 4.6 marked `deprecated: true` in `model-catalog.json`. CodeGen effort stays `high` (no `xhigh`). `vendor-prompting` skill gains rule R-CL-10 (Sonnet 5 migration deltas) citing the new `prompting-claude-sonnet-5` doc. `validate:agents`, `validate:agent-registry`, `validate:models`, `lint:vendor-prompting`, `lint:json` all clean. |
 
 ## How to Update
 

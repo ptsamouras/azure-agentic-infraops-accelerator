@@ -28,19 +28,28 @@
       "fetched_at": "2026-05-04T00:00:00Z",
       "sha256": "563784eb13ad1b44c3a592f940aa7ac2086ebeb97df3f4a09ba038b2f1564d39",
       "fetch_method": "gh-api"
+    },
+    {
+      "id": "anthropic-prompting-claude-sonnet-5",
+      "vendor": "anthropic",
+      "url": "https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/prompting-claude-sonnet-5",
+      "ref": null,
+      "fetched_at": "2026-06-30T20:01:04.090Z",
+      "sha256": "87f4ff8e5a530d8d3282044247cb8ddae857f1c89ee0735751109af2a22fda10",
+      "fetch_method": "fetch-webpage"
     }
   ],
   "families": [
     {
       "family": "claude-opus",
       "status": "enforced",
-      "label_examples": ["Claude Opus 4.8", "Claude Opus 4.7"],
+      "label_examples": ["Claude Opus 5", "Claude Opus 4.8", "Claude Opus 4.7"],
       "rule_subset_note": "All Claude rules apply at default severity."
     },
     {
       "family": "claude-sonnet",
       "status": "enforced",
-      "label_examples": ["Claude Sonnet 4.6", "Claude Sonnet 4.5"],
+      "label_examples": ["Claude Sonnet 5", "Claude Sonnet 4.6", "Claude Sonnet 4.5"],
       "rule_subset_note": "All Claude rules apply at default severity."
     },
     {
@@ -54,6 +63,18 @@
       "status": "warn-only",
       "label_examples": ["Claude (unspecified variant)"],
       "rule_subset_note": "Generic Claude label — flag at warn for explicit version."
+    },
+    {
+      "family": "gpt-5.6-terra",
+      "status": "enforced",
+      "label_examples": ["GPT-5.6-Terra"],
+      "rule_subset_note": "OpenAI outcome-first rules apply at default severity."
+    },
+    {
+      "family": "gpt-5.6-luna",
+      "status": "reviewer-only",
+      "label_examples": ["GPT-5.6-Luna"],
+      "rule_subset_note": "Decision-log only; no automated model-specific enforcement."
     },
     {
       "family": "gpt-5.5",
@@ -76,7 +97,7 @@
     {
       "family": "mai-code",
       "status": "reviewer-only",
-      "label_examples": ["MAI-Code-1-Flash"],
+      "label_examples": ["MAI-Code-1.1-Flash"],
       "rule_subset_note": "Microsoft coding model; no MAI-specific automated prompting rules yet. Used for handoff-only orchestration routing."
     },
     {
@@ -160,11 +181,11 @@
     {
       "id": "gpt55-skeleton-001",
       "vendor": "openai",
-      "model_families": ["gpt-5.5"],
+      "model_families": ["gpt-5.6-terra", "gpt-5.5"],
       "applies_to": "agent",
       "severity": "warn",
-      "summary": "GPT-5.5 agents must contain outcome-first skeleton sections: # Goal, # Success criteria, # Constraints, # Output, # Stop rules.",
-      "rationale": "OpenAI's GPT-5.5 prompting guide explicitly publishes this skeleton; missing sections degrade behavior calibration.",
+      "summary": "GPT-5.6-Terra agents must contain outcome-first skeleton sections: # Goal, # Success criteria, # Constraints, # Output, # Stop rules.",
+      "rationale": "The OpenAI prompting guide publishes this skeleton; missing sections degrade behavior calibration.",
       "source_id": "openai-prompting-guide",
       "source_anchor": "suggested-prompt-structure",
       "validator_check_id": "checkGpt55Skeleton",
@@ -174,11 +195,11 @@
     {
       "id": "gpt-no-claude-xml-001",
       "vendor": "cross-vendor",
-      "model_families": ["gpt-5.5"],
+      "model_families": ["gpt-5.6-terra", "gpt-5.5"],
       "applies_to": "agent",
       "severity": "warn",
       "summary": "GPT-family agents MUST NOT contain Claude-specific XML blocks (<investigate_before_answering>, <context_awareness>, <scope_fencing>, <empty_result_recovery>, <subagent_budget>).",
-      "rationale": "OpenAI prompting guide steers GPT-5.5 with markdown sections; Claude-only XML blocks are noise that GPT models do not natively interpret.",
+      "rationale": "OpenAI prompting guidance uses markdown sections; Claude-only XML blocks are noise that GPT models do not natively interpret.",
       "source_id": "openai-prompting-guide",
       "source_anchor": "personality-and-behavior",
       "validator_check_id": "checkGptNoClaudeXml",
@@ -230,10 +251,10 @@
     {
       "id": "gpt55-stop-rules-non-empty-001",
       "vendor": "openai",
-      "model_families": ["gpt-5.5"],
+      "model_families": ["gpt-5.6-terra", "gpt-5.5"],
       "applies_to": "agent",
       "severity": "warn",
-      "summary": "GPT-5.5 agents must have a non-empty body under # Stop rules (>=1 non-blank line before next H1).",
+      "summary": "GPT-5.6-Terra agents must have a non-empty body under # Stop rules (>=1 non-blank line before next H1).",
       "rationale": "OpenAI prompting guide: 'Add explicit stopping conditions ... Define missing-evidence behavior'. An empty Stop rules section is misleading scaffolding.",
       "source_id": "openai-prompting-guide",
       "source_anchor": "outcome-first-prompts-and-stopping-conditions",
@@ -286,7 +307,7 @@
     {
       "id": "personality-scoping-001",
       "vendor": "openai",
-      "model_families": ["gpt-5.5"],
+      "model_families": ["gpt-5.6-terra", "gpt-5.5"],
       "applies_to": "agent",
       "severity": "info",
       "summary": "# Personality block should appear only on user-facing agents (Orchestrator family); internal pipeline agents should omit it.",
