@@ -1,7 +1,7 @@
 ---
 name: 01-Orchestrator
 description: Master orchestrator for the multi-step Azure platform engineering workflow. Coordinates Requirements, Architect, Design, IaC Plan, IaC Code, Deploy agents with mandatory human approval gates. Routes Bicep or Terraform tracks via decisions.iac_tool.
-model: ["MAI-Code-1-Flash"]
+model: ["MAI-Code-1.1-Flash"]
 argument-hint: Describe the Azure platform engineering project you want to build end-to-end
 user-invocable: true
 agents:
@@ -19,7 +19,7 @@ agents:
     "06t-Terraform CodeGen",
     "07t-Terraform Deploy",
   ]
-tools: [vscode, execute, read, agent, browser, edit, search, web, web/fetch, web/githubRepo, todo]
+tools: [vscode, execute, read, agent, browser, vscodeGeneral/rename, vscodeGeneral/usages, vscodeNotebooks/createJupyterNotebook, vscodeNotebooks/editNotebook, edit, search, web, azure-mcp/search, todo]
 handoffs:
   - label: "▶ Start New Project"
     agent: 01-Orchestrator
@@ -43,7 +43,7 @@ handoffs:
     send: true
   - label: "Step 3: Design Artifacts"
     agent: 04-Design
-    prompt: "Generate architecture diagrams and ADRs based on the architecture assessment in `agent-output/{project}/02-architecture-assessment.md`. The 04-Design agent will ask which tool (Draw.io or Python) and which scope (diagrams, ADRs, or both). This step is optional — you can skip directly to Step 3.5."
+    prompt: "Generate Python architecture diagrams and ADRs based on the architecture assessment in `agent-output/{project}/02-architecture-assessment.md`. The 04-Design agent will ask which scope to produce (diagrams, ADRs, or both). This step is optional — you can skip directly to Step 3.5."
     send: true
   - label: "Step 3.5: Governance Discovery"
     agent: 04g-Governance
@@ -198,8 +198,9 @@ subagent cannot exceed the cost tier of the parent. If the parent requests a
 higher-tier model, the subagent silently falls back to the parent's tier.
 [Reference](https://code.visualstudio.com/docs/copilot/agents/subagents).
 
-This orchestrator runs at **standard** tier (MAI-Code-1-Flash). The step agents and
-the challenger run at **medium** (GPT-5.5 / Sonnet 4.6) or **high** (Claude Opus 4.8)
+This orchestrator runs at **standard** tier (MAI-Code-1.1-Flash). The step agents and
+the challenger run at **medium** (GPT-5.6-Luna / GPT-5.6-Terra / Sonnet 5) or
+**high** (Claude Opus 5)
 tiers. Calling them via `#runSubagent` would silently downgrade them to
 standard tier and produce wrong-tier output for architecture, planning, and
 documentation work.
@@ -540,11 +541,11 @@ Orchestrator with the project name — no special resume prompt needed.
 
 | Tier       | Model             | Used For                                                                                          |
 | ---------- | ----------------- | ------------------------------------------------------------------------------------------------- |
-| `high`     | Claude Opus 4.8   | Architecture, Planning, Context Optimizer                                                         |
-| `medium`   | Claude Sonnet 4.6 | **Requirements**, Design, Bicep/Terraform CodeGen, Bicep/Terraform validate + preview subagents   |
-| `medium`   | GPT-5.5           | Governance, Deploy, As-Built, Diagnose, Challenger, E2E orchestrator                              |
-| `standard` | MAI-Code-1-Flash  | **Orchestrator** (handoff-only routing)                                                           |
-| `codex`    | GPT-5.3-Codex     | Cost estimate subagent                                                                            |
+| `high`     | Claude Opus 5     | Architecture, Planning                                                                           |
+| `medium`   | Claude Sonnet 5   | **Requirements**, Design, CodeGen, As-Built, Context Optimizer, validation + preview subagents    |
+| `medium`   | GPT-5.6-Terra     | Diagnose, E2E orchestrator, challenger review subagent                                            |
+| `standard` | MAI-Code-1.1-Flash  | **Orchestrator** (handoff-only routing)                                                           |
+| `codex`    | GPT-5.6-Luna      | Governance, Deploy, Challenger, cost estimate subagent                                            |
 
 > The canonical assignments live in
 > [tools/registry/agent-registry.json](../../tools/registry/agent-registry.json) and
