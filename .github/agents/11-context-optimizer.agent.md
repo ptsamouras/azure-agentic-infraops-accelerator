@@ -1,6 +1,6 @@
 ---
 name: 11-Context Optimizer
-model: ["Claude Sonnet 4.6"]
+model: ["Claude Sonnet 5"]
 description: "Analyzes Copilot Chat debug logs to audit context-window utilization across agents. Identifies bloated prompts, redundant file reads, missing hand-off points, and wasted tokens. Produces actionable optimization reports. Recommendations only — never edits agents."
 user-invocable: true
 agents: []
@@ -164,7 +164,7 @@ For each session, analyze request patterns:
 | Requests per session   | Total `ccreq` entries grouped by session        |
 | Avg latency by model   | Mean response time per model                    |
 | Long-tail turns        | Turns > 15s (likely context-heavy)              |
-| Model distribution     | % Opus vs Sonnet vs GPT-5.5 vs GPT-5.3-Codex    |
+| Model distribution     | % Opus vs Sonnet vs GPT-5.6-Terra vs GPT-5.6-Luna |
 | Request type breakdown | editAgent vs title vs progressMessages          |
 | Burst patterns         | Rapid sequential calls (< 2s gap = likely loop) |
 | askQuestions per phase | Count from profiler; flag any single phase > 3 (Plan 01 Phase 4 batching) |

@@ -4,7 +4,7 @@
 
 ```bash
 # Clone the Accelerator template and open in dev container
-# https://github.com/ptsamouras/azure-agentic-infraops-accelerator
+# https://github.com/jonathan-vella/apex-accelerator
 git clone https://github.com/YOUR-USERNAME/my-infraops-project.git && cd my-infraops-project
 code . # then: F1 → Dev Containers: Reopen in Container
 
@@ -12,7 +12,7 @@ npm install                              # Node.js deps (validators, linting)
 npm run setup                            # Azure + GitHub OIDC/secrets/RBAC
 ```
 
-> Python deps (diagrams, Azure Pricing MCP, apex-recall) install automatically
+> Python deps (diagrams and apex-recall) install automatically
 > via the dev container's `post-create.sh`. Setup details:
 > https://apexops.pro/getting-started/azure-setup/
 
