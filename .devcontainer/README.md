@@ -6,7 +6,7 @@ This devcontainer provides a **complete, pre-configured development environment*
 It includes all required tools, extensions, and configurations to build Azure infrastructure
 with AI agents.
 
-**Base image:** `mcr.microsoft.com/devcontainers/base:ubuntu-24.04`
+**Base image:** `mcr.microsoft.com/devcontainers/base:ubuntu26.04` (`amd64` and `arm64`)
 
 ## What's Included
 
@@ -16,59 +16,136 @@ with AI agents.
 | ------------------------- | ------- | --------------------------------- |
 | Azure CLI                 | latest  | Azure management with Bicep CLI   |
 | PowerShell                | latest  | Scripting and Az module host      |
-| Python                    | 3.14    | Diagrams, MCP servers, tooling    |
+| Python                    | 3.14    | Diagrams and tooling              |
 | Node.js                   | LTS     | Validation scripts, npm tooling   |
 | GitHub CLI                | latest  | Repository operations             |
-| Terraform                 | latest  | IaC with TFLint v0.61.0           |
-| Go                        | 1.24.2  | Build Terraform MCP Server binary |
-| Deno                      | latest  | Draw.io MCP server runtime        |
+| Terraform                 | latest  | Signed HashiCorp APT repository    |
 | Azure Developer CLI (azd) | latest  | Standardized Azure deployments    |
 
 ### Tools Installed by `post-create.sh`
 
-| Step | Tool                           | Method                                                                       |
-| ---- | ------------------------------ | ---------------------------------------------------------------------------- |
-| 1    | npm local dependencies         | `npm install`                                                                |
-| 2    | markdownlint-cli2              | `npm install -g`                                                             |
-| 3    | k6 load testing                | deb repo (amd64) or GitHub release (arm64)                                   |
-| 4    | Deno upgrade                   | `deno upgrade` (ensures latest beyond cached feature layer)                  |
-| 5    | Git config and cache dirs      | `git config`, `mkdir`                                                        |
-| 6    | Python packages                | `uv pip install` — diagrams, matplotlib, pillow, checkov, ruff               |
-| 7    | PowerShell Az modules          | `Install-Module` — Accounts, Resources, Storage, Network, KeyVault, Websites |
-| 8    | Azure Pricing MCP Server       | Clean `.venv` rebuild + `pip install -e .[admin]` (always, per policy)       |
-| 9    | Terraform MCP Server           | `git clone` + `go build` to `/go/bin/`                                       |
-| 9.5  | Terraform CLI hardening        | Ensures `TF_PLUGIN_CACHE_DIR` exists; `terraform version` smoke test         |
-| 10   | Python dependency verification | Validates imports against `requirements.txt`                                 |
-| 11   | apex-recall CLI                | `uv pip install -e` from `tools/apex-recall/`                                |
-| 12   | gitleaks                       | Binary from GitHub releases (pre-commit soft-skips if missing)               |
-| 13   | Azure CLI config               | Auto-install stable extensions without prompt                                |
-| 14   | MCP config and verification    | Ensures `.vscode/mcp.json`, prints tool versions                             |
+| Step | Setup                          | Method                                                        |
+| ---- | ------------------------------ | ------------------------------------------------------------- |
+| 1    | Mounted directories            | Ensure uv, gh config, and Terraform cache directories are writable |
+| 2    | npm and workspace dependencies | Ensure npm 12.0.2, then `npm ci` from `package-lock.json`       |
+| 3    | Python and apex-recall         | One `uv pip install` for requirements and editable recall; import and CLI verification |
+| 4    | PowerShell Az modules          | Synchronous `Install-Module`, then verify each required module exists |
+| 5    | Build tools and Terraform      | Check gitleaks, uv, and Terraform versions                     |
+| 6    | Azure CLI and Bicep            | Stable extension auto-install, disable CLI auto-upgrade, check Bicep with fallback install |
+| 7    | MCP defaults and tool versions | Add missing defaults via JSONC edits; run tool-version validation |
 
-### System Packages (installed via `onCreateCommand`)
+Required setup errors stop the script with a nonzero exit. PowerShell installs Accounts, Resources,
+Storage, Network, KeyVault, and Websites modules without bypassing publisher checks; missing modules
+or installation errors fail setup. Setup does not change global Git settings or credentials.
 
-graphviz, dos2unix, bats, uv
+### Build-Time Tools (installed via `Dockerfile`)
+
+Stable APT dependencies (`ca-certificates`, `curl`, `jq`, `tar`, `gzip`, `graphviz`, `dos2unix`, and `bats`)
+are installed in the image layer. uv 0.8.22 and gitleaks 8.28.0 are pinned and SHA-256 verified for
+`amd64` and `arm64` using [the download manifest](download-checksums.json).
+The existing tool updater does not update these pins; maintain their versions and checksums explicitly.
 
 ### MCP Servers (auto-configured in `.vscode/mcp.json`)
 
 | Server            | Transport         | Purpose                                          |
 | ----------------- | ----------------- | ------------------------------------------------ |
-| Azure Pricing MCP | stdio             | Real-time SKU pricing for cost estimates         |
+| Azure Resource Manager MCP | http      | Retail pricing and Azure cost management         |
 | GitHub MCP        | http              | Copilot-provided GitHub context                  |
-| Draw.io MCP       | stdio (Deno)      | Architecture diagram generation with Azure icons |
-| Terraform MCP     | stdio (Go)        | HashiCorp registry, module, and workspace tools  |
-| Azure MCP Server  | VS Code extension | RBAC-aware Azure context for agents              |
+| Azure MCP Server  | stdio (`npx`)      | RBAC-aware Azure context for agents              |
+
+Setup adds only missing default server entries. It preserves JSONC comments, custom arguments,
+existing defaults, and custom or retired server entries. Malformed configuration fails setup and
+is left untouched; setup does not perform automatic server migrations.
+
+#### Azure MCP Runtime And Release Checks
+
+Azure MCP uses an exact stable npm package version in the JSON configuration, with no editor-extension dependency.
+The npm `latest` tag may point to a prerelease; it is not a stable-channel guarantee.
+The server entry sets `NPM_CONFIG_ALLOW_REMOTE=all` for that child process only because npm 12 otherwise
+rejects cross-host tarball URLs returned by the configured package feed. This permits any remote dependency URL
+within that process, not a hostname allowlist. It does not change the registry or global npm settings.
+
+`post-start.sh` runs the release check automatically on every container start, including the start after a rebuild.
+It prints the result in the Dev Containers startup output. The registry request has a 30-second timeout;
+outdated, offline, timeout or missing-dependency results produce a warning without blocking container startup.
+No package installation, configuration rewrite, automatic upgrade or MCP restart happens in this hook.
+An editor-window reload alone is not a container start. For a long-running container or to retry a warning, run:
+
+```bash
+npm run check:mcp-release
+```
+
+This read-only check queries the configured feed, selects the highest stable semantic version, and compares it
+with both the workspace pin and the defaults in `configure-mcp.mjs`. It exits nonzero when an update is needed,
+the pins differ, the package is not exactly pinned to a stable release, or metadata cannot be verified.
+Feed lag remains possible; `CURRENT` means current according to that registry, not proof of upstream completeness.
+The existing Weekly Maintenance workflow runs the same check on schedule and manual dispatch after publication
+to the default branch. Monitor failed workflow notifications; it neither opens nor merges upgrade PRs automatically.
+
+| Owner | When | Outcome |
+| --- | --- | --- |
+| Dev Containers `postStartCommand` | Every container start | Automatic advisory check; warnings keep the container usable |
+| GitHub Actions Weekly Maintenance | Monday 06:00 UTC or manual dispatch | Failing job on outdated or unverifiable pins |
+| Maintainer | After a warning or failed maintenance job | Review and validate the upgrade, then restart the MCP server |
+
+For an upgrade, review release notes, update the package pin in `.vscode/mcp.json` and `configure-mcp.mjs` together,
+then run `node --test tools/tests/scripts/test_devcontainer_setup.mjs` and `npm run lint:mcp-config`.
+Restart Azure MCP from VS Code's `MCP: List Servers` command. Verify the reported runtime version, MCP initialization
+and tool discovery before resuming APEX. Downloaded updates do not replace an already-running server.
+Keep the previous pin available for rollback; do not auto-promote a beta or silently change versions during a workflow.
 
 ### VS Code Extensions
 
 - **GitHub Copilot** — Copilot Chat
 - **Python** — IntelliSense (Pylance), linting, debugging
-- **Azure** — Bicep, Resource Groups, Container Apps, Static Web Apps, CLI, azd, Azure MCP Server
+- **Azure** — Bicep and Resource Groups explorer; Azure CLI and azd remain container tools
 - **PowerShell** — language support
-- **Markdown** — Mermaid diagrams, GitHub preview, linting, Prettier formatting
-- **Kubernetes** — AKS tools, Container Tools
+- **Markdown** — Native VS Code editing with Prettier formatting
 - **GitHub** — Actions, Pull Requests
-- **Terraform** — HashiCorp + Azure Terraform
-- **Other** — Draw.io, Rainbow CSV, YAML, Resource Monitor, Deno
+- **Terraform** — HashiCorp Terraform
+- **Other** — YAML
+
+#### Lean Extension Policy
+
+Azure MCP runs directly from [the workspace MCP configuration](../.vscode/mcp.json), not an editor extension.
+Keep GitHub Copilot Chat; GitHub Copilot for Azure is a separate, unwanted extension for this workflow.
+The Azure Tools pack and Azure MCP Server extension bundle Azure Copilot. AI Toolkit adds another agent/skill
+surface and depends on that MCP extension. Avoid those packages for the lean APEX setup.
+
+Service-specific Azure explorers, Azure testing, and CLI/azd editor extensions are optional interfaces,
+not prerequisites for the installed command-line tools. Removing them does not remove Azure CLI, azd,
+Terraform, PowerShell, or the configured MCP servers. Keep the .NET runtime required by Bicep and the
+Python debugger/environment tooling when using Python development features.
+
+Workspace `unwantedRecommendations` discourage installation; they do not uninstall existing extensions
+or override personal Settings Sync. The devcontainer also uses `-publisher.extension` entries to remove
+the unwanted packages from the automatic container install list. `npm run validate:extension-bloat`
+requires those exclusions and rejects direct additions, including version-pinned entries.
+These exclusions are not an extension security policy and do not block manual or dependency-driven installs.
+
+For an existing container, uninstall GitHub Copilot for Azure and AI Toolkit before uninstalling Azure MCP Server.
+Remove the Azure Tools pack as well, retaining unrelated service explorers when offered the choice.
+Reload the VS Code window, then use `MCP: List Servers` to verify that only the workspace Azure MCP provider remains.
+Keep Azure Resource Manager MCP and Bicep MCP; they provide different capabilities.
+If packages return, check the host/profile extensions and `dev.containers.defaultExtensions` for the Azure Tools pack
+or its dependencies. Rebuild the container to apply changed devcontainer exclusions.
+The extension validator guards repository declarations, not personal installations.
+
+#### Further Setup Optimization
+
+| Area | Implemented State / Remaining Work |
+| ---- | ---------------------------------- |
+| Required dependencies | Fail-fast npm, Python, and synchronous PowerShell setup |
+| Python installation | Shared requirements and editable recall install, followed by verification |
+| MCP configuration | Missing-default-only JSONC edits; existing entries preserved; malformed input fails untouched |
+| Image layers | Stable APT dependencies and checksum-verified uv/gitleaks installed at build time |
+| Cache persistence | Terraform provider volume added; uv volume retained |
+| Additional caches | No new npm or PowerShell module volumes: measured value and portability remain unproven |
+| Git authentication | Existing credentials preserved; optional token forwarding uses the VS Code host process |
+| Validation and timing | Actual image build and cold/warm timing remain unverified; Docker/devcontainer executables unavailable in the validation environment |
+
+Startup performs a bounded, read-only MCP release query; `post-start.sh` does no installs or upgrades.
+No extension-removal token savings or rebuild-time improvement is claimed without measurements.
 
 ## Quick Start
 
@@ -86,7 +163,7 @@ graphviz, dos2unix, bats, uv
 1. Open VS Code in this repository folder
 2. Press `F1` or `Ctrl+Shift+P`
 3. Type and select: `Dev Containers: Reopen in Container`
-4. Wait 3-5 minutes for initial build (subsequent opens are faster)
+4. Wait for the image build and post-create setup to finish; cold-build time depends on downloads and host resources
 
 **Option 2: Notification Prompt**
 
@@ -106,67 +183,53 @@ az account set --subscription "<your-subscription-id>"
 # Open Chat (Ctrl+Shift+I) → Select Orchestrator → Describe your project
 ```
 
-## GitHub CLI Authentication (GH_TOKEN)
+## GitHub Authentication
 
-HTTPS-based `gh auth login` can fail inside devcontainers on some platforms (Windows, ARM, WSL 2).
-The **only supported** approach is a **Personal Access Token (PAT)** set in **VS Code User Settings**.
-The container reads it automatically — no `gh auth login` required inside the container.
+Git normally uses credentials forwarded by VS Code Dev Containers from the host credential helper
+or SSH agent. Git and the `gh` CLI can use different identities; successful Git access does not
+establish a `gh` login.
 
-> **Why not shell exports?** Setting `GH_TOKEN` in `~/.bashrc`, `~/.profile`, or PowerShell
-> environment variables does **not** propagate reliably into devcontainers. VS Code reads
-> `${localEnv:GH_TOKEN}` from its own process environment, which only inherits from the
-> specific shell session that launched it. The VS Code settings method is deterministic and
-> survives rebuilds, reboots, and IDE restarts.
+For `gh`, use an explicitly authenticated configuration in the persistent `~/.config/gh` Docker
+volume, or an optional host-process `GH_TOKEN`. If authentication is needed, the user chooses and
+performs it, for example with `gh auth login`. Setup and agents must not run login automatically,
+switch credentials, or persist Git credential-helper changes.
 
-### Step 1: Create a Fine-Grained PAT
+### Optional Host-Process Token
 
-Fine-grained PATs work here. The `gh` CLI fully supports fine-grained tokens (`github_pat_...`)
-via the `GH_TOKEN` environment variable for all repository-scoped operations.
+`remoteEnv.GH_TOKEN` uses `${localEnv:GH_TOKEN}`: the environment inherited by the **host VS Code process**
+when it launches. Supply a token securely in that host environment before launching VS Code; an already
+running VS Code process may need a full exit and relaunch before reopening the container.
+After rotation, refresh that host environment and relaunch VS Code so the container receives the new value.
 
-1. Go to **GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens**
-2. Click **Generate new token**
-3. Set expiry (90 days recommended; rotate via calendar reminder)
-4. **Repository access**: All repositories, or select specific ones
-5. **Permissions** — minimum required:
+`terminal.integrated.env.*` applies only to integrated terminals. It does not populate `${localEnv:GH_TOKEN}`
+and does not make a token available to all lifecycle hooks, MCP processes, or the extension host.
+An export inside the container likewise does not change the host VS Code environment.
 
-   | Permission    | Level      |
-   | ------------- | ---------- |
-   | Contents      | Read/Write |
-   | Metadata      | Read       |
-   | Pull requests | Read/Write |
-   | Issues        | Read/Write |
-   | Workflows     | Read/Write |
+A fine-grained PAT is optional, not the only supported authentication method. Limit its repository access,
+permissions, and lifetime to the intended operations; organization policies or approval may also apply.
+An environment token takes precedence over stored `gh` credentials. Never put secrets in repository files,
+paste them into chat, or ask an agent to receive or display them.
 
-6. Copy the token (`github_pat_...`)
+### Identity Mismatch on Git Push
 
-### Step 2: Add to VS Code User Settings (once per machine)
-
-1. Open VS Code Settings: **Ctrl+,** (or **Cmd+,** on macOS)
-2. Click the **Open Settings (JSON)** icon (top-right)
-3. Add this entry (replace the placeholder with your actual token):
-
-```jsonc
-"terminal.integrated.env.linux": { "GH_TOKEN": "github_pat_your_token_here" }
-```
-
-<!-- markdownlint-disable MD029 -->
-
-4. Save the file
-5. Rebuild the devcontainer: **F1 → Dev Containers: Rebuild Container**
-<!-- markdownlint-enable MD029 -->
-
-The devcontainer forwards `GH_TOKEN` from VS Code's environment automatically
-(`"GH_TOKEN": "${localEnv:GH_TOKEN}"` in `devcontainer.json`).
-
-### Step 3: Verify inside the container
+When Git reports permission denied to an unexpected account, compare that identity with the CLI identity:
 
 ```bash
-gh auth status
-# Expected: ✓ Logged in to github.com as <your-username> (token)
+gh api user --jq .login
 ```
 
-> **Token rotation**: When your PAT expires, update the value in VS Code User Settings and
-> rebuild the container (`F1 → Dev Containers: Rebuild Container`).
+Check the target repository and branch as well. Do not automatically switch accounts or change persistent
+Git configuration. If the user confirms the `gh` identity is the intended account and explicitly authorizes
+using it for this push, use a per-command helper for the approved feature branch:
+
+```bash
+git -c credential.helper= -c credential.helper='!gh auth git-credential' push origin <approved-feature-branch>
+```
+
+Replace the branch placeholder before running. The empty helper clears inherited helpers for this invocation;
+single quotes protect `!` from Bash history expansion. This does not change saved Git settings or authorize
+a force push or a push to `main`. If the identities already match, investigate repository permissions or branch
+protection instead of changing credentials.
 
 ## Environment Configuration
 
@@ -175,12 +238,11 @@ gh auth status
 | Variable                  | Value                         | Purpose                                                  |
 | ------------------------- | ----------------------------- | -------------------------------------------------------- |
 | `AZURE_DEFAULTS_LOCATION` | `swedencentral`               | Default Azure region (EU GDPR-compliant)                 |
-| `GH_TOKEN`                | `${localEnv:GH_TOKEN}`        | GitHub PAT forwarded from host via VS Code User Settings |
+| `GH_TOKEN`                | `${localEnv:GH_TOKEN}`        | Optional token inherited by the host VS Code process     |
 | `PYTHONDONTWRITEBYTECODE` | `1`                           | Skip `.pyc` generation                                   |
 | `PYTHONUNBUFFERED`        | `1`                           | Unbuffered Python output                                 |
 | `UV_CACHE_DIR`            | `~/.cache/uv`                 | uv package cache                                         |
 | `TF_PLUGIN_CACHE_DIR`     | `~/.terraform.d/plugin-cache` | Terraform provider cache                                 |
-| `DENO_DIR`                | `~/.cache/deno`               | Deno module cache                                        |
 
 ### Azure CLI Extension Auto-Install
 
@@ -196,57 +258,47 @@ Preview extensions remain opt-in. To auto-install preview extensions too, change
 
 ## Lifecycle Scripts
 
-### `onCreateCommand` — system packages
+### `onCreateCommand` — Azure CLI Smoke Check
 
-Runs once when the container is created. Installs `graphviz`, `dos2unix`, `bats`, and `uv`.
+Runs `az version --output none` once when the container is created and fails if Azure CLI is unusable.
+System packages, uv, and gitleaks are already installed in the image.
 
 ### `postCreateCommand` — `post-create.sh`
 
-Runs once after container creation. Performs multi-step setup (npm, Python, PowerShell modules,
-MCP servers, gitleaks, Git config, and tool verification). Output is logged to
-`~/.devcontainer-install.log`.
-
-> **Step 8 policy:** the Azure Pricing MCP venv is **always rebuilt from
-> scratch** in `post-create.sh` (not only on Python-minor drift). This guarantees
-> the venv matches the container's current Python and avoids stale, half-broken
-> pip state carrying over from a persisted workspace. The success message
-> always includes the rebuild reason — e.g. `(rebuilt: clean rebuild
-(post-create policy))` on a healthy container, or `(rebuilt: Python 3.13 →
-3.14 drift)` after a base-image Python bump. `post-start.sh` keeps the
-> conditional-rebuild path so day-to-day starts stay fast.
+Runs once after container creation. Installs workspace dependencies and PowerShell modules, adds missing
+MCP defaults, and verifies tools. Required failures stop setup. Output goes to stdout/stderr in the
+Dev Containers creation log (or the terminal for a manual run); no separate installation log file is written.
 
 ### `postStartCommand` — `post-start.sh`
 
-Runs on every container start. Lightweight updates only:
+Runs on every container start without installing or upgrading dependencies:
 
-| Tool                 | Method                                                                   |
-| -------------------- | ------------------------------------------------------------------------ |
-| terraform-mcp-server | Clone + build (if missing)                                               |
-| Azure Pricing MCP    | `pip install -e .` in its venv                                           |
-| npm local deps       | `npm install`                                                            |
-| Python packages      | `uv pip install --upgrade` (checkov, ruff, diagrams, matplotlib, pillow) |
-| apex-recall          | `uv pip install --upgrade -e`                                            |
-| azd auth             | Status check (warns if not authenticated)                                |
-| lefthook             | `npx lefthook install` (Git hooks)                                       |
+| Check | Method |
+| --- | --- |
+| Hook permissions | Restore executable bits on mounted shell hooks |
+| azd authentication | Read-only status check |
 
 ### When to Rebuild vs. Restart
 
 | Situation                       | Action                                       |
 | ------------------------------- | -------------------------------------------- |
-| Tool not found or broken        | `bash .devcontainer/post-create.sh`          |
+| Workspace dependency setup failed | Resolve the reported error, then run `bash .devcontainer/post-create.sh` |
+| Build-time tool missing or broken | Rebuild the container; post-create verifies but does not reinstall uv/gitleaks |
 | New devcontainer feature needed | `F1` → Rebuild Container                     |
 | OS-level or base image update   | `F1` → Rebuild Container Without Cache       |
-| Routine tool updates            | Automatic on every start via `post-start.sh` |
+| Dependency or tool update       | Update the relevant pins or lockfile, then rebuild the container |
 
 ## Troubleshooting
 
 | Issue                      | Solution                                                 |
 | -------------------------- | -------------------------------------------------------- |
 | Container won't start      | Check Docker is running; increase memory to 4 GB+        |
-| Tool not found             | Run `bash .devcontainer/post-create.sh`                  |
+| Workspace dependency missing | Resolve setup errors and rerun `bash .devcontainer/post-create.sh` |
+| uv or gitleaks missing     | Rebuild the image; check the build log and download manifest |
 | Azure auth fails           | Use `az login --use-device-code`                         |
-| `gh` CLI not authenticated | Set `GH_TOKEN` in VS Code User Settings (see above)      |
-| Stale tool versions        | Restart container (triggers `post-start.sh`)             |
+| `gh` CLI not authenticated | Explicitly authenticate `gh`, or supply optional host-process `GH_TOKEN` |
+| Git and `gh` identities differ | Follow [Identity Mismatch on Git Push](#identity-mismatch-on-git-push) |
+| Stale tool versions        | Review pins and locks before rebuilding; uv/gitleaks are not updated by the tool updater |
 | Full rebuild needed        | `F1` → `Dev Containers: Rebuild Container Without Cache` |
 
 Full troubleshooting guide: [Troubleshooting](https://apexops.pro/guides/troubleshooting/)
@@ -262,8 +314,9 @@ Full troubleshooting guide: [Troubleshooting](https://apexops.pro/guides/trouble
 
 ## Security Notes
 
-- Azure credentials persist in `~/.azure/` (mounted volume) — never commit to Git (already in `.gitignore`)
-- `GH_TOKEN` is injected via VS Code User Settings, not stored in any repo file
+- Azure credentials persist in the host `~/.azure/` bind mount; never commit credentials to Git
+- Explicit `gh` authentication persists in its config volume; optional `GH_TOKEN` comes from the host process
+- Never store tokens in repository files or send secrets through chat or model-visible tool input
 - gitleaks runs as a pre-commit hook for secret scanning (soft-skips if not installed)
 - Use Azure Key Vault for production secrets
 - Use service principals for CI/CD environments

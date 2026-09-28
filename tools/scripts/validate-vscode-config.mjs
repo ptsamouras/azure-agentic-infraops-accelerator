@@ -25,21 +25,11 @@ const REQUIRED_SETTINGS = [
 ];
 
 // Required extensions for full orchestration support
-const REQUIRED_EXTENSIONS = ["GitHub.copilot-chat", "ms-azuretools.vscode-bicep", "DavidAnson.vscode-markdownlint"];
+const REQUIRED_EXTENSIONS = ["GitHub.copilot-chat", "ms-azuretools.vscode-bicep"];
 
 // Extensions intentionally installed only in devcontainer.json.
 // Keep this list explicit and minimal to avoid silent drift.
-const ALLOWED_DEVCONTAINER_ONLY_EXTENSIONS = new Set([
-  "github.vscode-github-actions",
-  "mechatroner.rainbow-csv",
-  "ms-azuretools.azure-dev",
-  "ms-azuretools.vscode-azurecontainerapps",
-  "ms-azuretools.vscode-azurestaticwebapps",
-  "ms-azuretools.vscode-containers",
-  "ms-kubernetes-tools.vscode-aks-tools",
-  "ms-kubernetes-tools.vscode-kubernetes-tools",
-  "mutantdino.resourcemonitor",
-]);
+const ALLOWED_DEVCONTAINER_ONLY_EXTENSIONS = new Set();
 
 const errors = [];
 const warnings = [];
@@ -188,8 +178,18 @@ function crossCheckExtensions(devcontainerExts, extensionsJsonExts) {
 
   console.log("\n🔗 Cross-checking extension lists...");
 
-  const devSet = new Set(devcontainerExts.map(normalizeExtensionId));
+  const normalizedDev = devcontainerExts.map(normalizeExtensionId);
+  const excluded = normalizedDev
+    .filter((extension) => extension.startsWith("-"))
+    .map((extension) => extension.slice(1));
+  const devSet = new Set(normalizedDev.filter((extension) => !extension.startsWith("-")));
   const extSet = new Set(extensionsJsonExts.map(normalizeExtensionId));
+
+  for (const extension of excluded) {
+    if ([...devSet, ...extSet].some((entry) => entry.split("@")[0] === extension)) {
+      errors.push(`❌ Excluded extension is also installed or recommended: ${extension}`);
+    }
+  }
 
   const onlyInDevcontainer = [...devSet].filter((extension) => !extSet.has(extension)).sort();
   const onlyInExtensionsJson = [...extSet].filter((extension) => !devSet.has(extension)).sort();

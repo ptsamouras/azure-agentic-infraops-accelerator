@@ -35,7 +35,7 @@
       "url": "./tools/schemas/governance-baseline.schema.json"
     },
     {
-      "fileMatch": [".github/skills/vendor-prompting/rules.json"],
+      "fileMatch": [".github/skills/apex-vendor-prompting/rules.json"],
       "url": "./tools/schemas/vendor-prompting-rules.schema.json"
     },
     {
@@ -49,25 +49,13 @@
     {
       "fileMatch": [
         "agent-output/*/sku-manifest.json",
-        ".github/skills/azure-artifacts/templates/sku-manifest.template.json"
+        ".github/skills/apex-azure-artifacts/templates/sku-manifest.template.json"
       ],
       "url": "./tools/schemas/sku-manifest.schema.json"
     },
     {
-      "fileMatch": ["agent-output/*/08-iteration-log.json", "agent-output/_bench/*/*/08-iteration-log.json"],
-      "url": "./tools/schemas/iteration-log.schema.json"
-    },
-    {
-      "fileMatch": ["tools/tests/drawio-golden/*/expected.json"],
-      "url": "./tools/schemas/drawio-golden-scenario.schema.json"
-    },
-    {
-      "fileMatch": ["tools/tests/drawio-baseline/_baseline-runs.json"],
-      "url": "./tools/schemas/drawio-baseline-runs.schema.json"
-    },
-    {
-      "fileMatch": ["tools/tests/drawio-baseline/regen-baseline.json"],
-      "url": "./tools/schemas/drawio-regen-baseline.schema.json"
+      "fileMatch": ["tools/registry/upstream-skill-pins.json"],
+      "url": "./tools/schemas/upstream-skill-pins.schema.json"
     }
   ],
   "editor.formatOnSave": true,
@@ -99,11 +87,6 @@
     "editor.tabSize": 4
   },
   "python.terminal.useEnvFile": true,
-  "azureTerraform.checkTerraformCmd": false,
-  "deno.enable": false,
-  "deno.enablePaths": ["tools/mcp-servers/drawio"],
-  "deno.lint": true,
-  "deno.unstable": [],
   "chat.mcp.serverSampling": {
     "apex/.vscode/mcp.json: azure-mcp": {
       "allowedDuringChat": true
