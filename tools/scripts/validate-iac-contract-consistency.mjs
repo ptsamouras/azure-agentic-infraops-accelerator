@@ -30,11 +30,12 @@ import { fileURLToPath } from "node:url";
 import { globSync } from "node:fs";
 import { Reporter } from "./_lib/reporter.mjs";
 import { readJson, sha256File } from "./_lib/json.mjs";
+import { createAvmBicepReferenceRegex, createAvmTerraformReferenceRegex } from "./_lib/avm-patterns.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
-const AVM_BICEP_RE = /br\/public:avm\/(?:res|ptn)\/[a-z0-9-]+(?:\/[a-z0-9-]+)+/g;
-const AVM_TF_RE = /Azure\/avm-res-[a-z0-9-]+\/azurerm/g;
+const AVM_BICEP_RE = createAvmBicepReferenceRegex("g");
+const AVM_TF_RE = createAvmTerraformReferenceRegex("g");
 const HEADING_RE = /^##+\s+([A-Z][a-zA-Z0-9.]+\/[a-zA-Z0-9.]+)\s*:\s*([a-z][a-z0-9-]+)\s*$/gm;
 
 function extractPlanReferences(plan) {
@@ -61,11 +62,18 @@ function main() {
   const r = new Reporter("IaC Contract ↔ Plan Consistency Validator");
   r.header();
   const args = process.argv.slice(2);
+  if (args.includes("--help")) {
+    console.log(
+      "Usage: validate-iac-contract-consistency.mjs [contract-path-or-glob ...]\nNo paths: scan project contracts.",
+    );
+    return;
+  }
   const patterns = args.length > 0 ? args : defaultGlobs();
 
   let files = [];
   for (const pat of patterns) {
     const matched = globSync(pat, { cwd: ROOT, absolute: true });
+    if (args.length > 0 && matched.length === 0) r.error(pat, "Explicit target matched no files; use an artifact path");
     files = files.concat(matched);
   }
   files = [...new Set(files)];
@@ -73,7 +81,8 @@ function main() {
   if (files.length === 0) {
     r.info("(no 04-iac-contract.json files found)");
     r.summary();
-    process.exit(0);
+    r.exitOnError("No IaC contracts selected");
+    return;
   }
 
   for (const contractPath of files) {
