@@ -77,7 +77,7 @@ The `<step>` suffix is the integer step number (`1`, `2`, `3_5`, `4`).
 | Key            | Valid values                   | Default behaviour if absent          | Set by    | Read by                                             |
 | -------------- | ------------------------------ | ------------------------------------ | --------- | --------------------------------------------------- |
 | `design_scope` | `diagrams` \| `adrs` \| `both` | Design Phase 00 gate raises question | 04-Design | 04-Design workflow routing (Phase 0 + Sections 1/2) |
-| `diagram_tool` | `drawio` \| `python`           | Design Phase 0 gate raises question  | 04-Design | 04-Design workflow routing                          |
+| `diagram_tool` | `python`                       | Recorded for diagram generation      | 04-Design | 04-Design workflow routing                          |
 
 ### Step 3.5 (Governance) keys
 
@@ -106,7 +106,7 @@ The `<step>` suffix is the integer step number (`1`, `2`, `3_5`, `4`).
 
 ### Cost monitoring baseline keys
 
-Owned by `.github/skills/azure-defaults/references/cost-alerts-baseline.md`.
+Owned by `.github/skills/apex-azure-defaults/references/cost-alerts-baseline.md`.
 All keys are emitted by Planner Phase 4 (or 02-Requirements for the
 two user-facing keys) and consumed by 06b/06t CodeGen Wave 4.
 
@@ -122,7 +122,7 @@ two user-facing keys) and consumed by 06b/06t CodeGen Wave 4.
 
 ### VNet planning keys (Architect Phase 6b)
 
-Owned by [`.github/skills/azure-defaults/references/vnet-planning.md`](../../../.github/skills/azure-defaults/references/vnet-planning.md).
+Owned by [`.github/skills/apex-azure-defaults/references/vnet-planning.md`](../../../.github/skills/apex-azure-defaults/references/vnet-planning.md).
 Emitted by 03-Architect Phase 6b when the trigger contract holds
 (any `services[].requires[] ∈ {vnet-integration, private-endpoints}`
 OR any `services[].service_name` in the vnet-attached whitelist).
