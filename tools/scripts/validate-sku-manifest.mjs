@@ -44,14 +44,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { globSync } from "node:fs";
 import { loadValidator } from "./_lib/ajv-validator.mjs";
+import { findArtifactFiles } from "./_lib/artifact-index.mjs";
 import { Reporter } from "./_lib/reporter.mjs";
 import { readJson } from "./_lib/json.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCHEMA_PATH = path.join(ROOT, "tools/schemas/sku-manifest.schema.json");
-const VNET_PLANNING_REF = path.join(ROOT, ".github/skills/azure-defaults/references/vnet-planning.md");
+const VNET_PLANNING_REF = path.join(ROOT, ".github/skills/apex-azure-defaults/references/vnet-planning.md");
 
 const PRICING_TTL_DAYS = Number(process.env.APEX_SKU_PRICING_TTL_DAYS ?? 30);
 const MANIFEST_TTL_DAYS = Number(process.env.APEX_SKU_MANIFEST_TTL_DAYS ?? 90);
@@ -377,7 +377,9 @@ function validateFile(filePath, validate, r, vnetWhitelist) {
 }
 
 function findManifests() {
-  return globSync("agent-output/*/sku-manifest.json", { cwd: ROOT, nodir: true }).map((p) => path.join(ROOT, p));
+  return findArtifactFiles((file) => /^agent-output\/[^/]+\/sku-manifest\.json$/.test(file)).map((file) =>
+    path.join(ROOT, file),
+  );
 }
 
 /**

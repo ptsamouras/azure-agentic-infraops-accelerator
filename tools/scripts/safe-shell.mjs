@@ -33,6 +33,7 @@ const SCAN_GLOBS = [
   // Agent + prompt + instruction files
   { dir: ".github/agents", suffix: ".md" },
   { dir: ".github/instructions", suffix: ".md" },
+  { dir: ".github/prompts", suffix: ".md" },
   { dir: "tools/apex-prompts", suffix: ".md" },
 ];
 // For skills, only the canonical SKILL files (not nested references/).
@@ -89,6 +90,15 @@ const RULES = [
     why: "grep returns exit 1 on no-match; under `set -e` this aborts the entire batch",
     fix: 'append `|| true`, `|| echo "<fallback>"`, or pipe to another command',
     context: "set-e",
+  },
+  {
+    id: "node-e-double-quoted-bang",
+    // Double-quoted `node -e "... !identifier ..."` triggers Bash history
+    // expansion (`bash: !fs.existsSync: event not found`) and stalls the
+    // persistent terminal session for ~300s waiting for prompt recovery.
+    pattern: /\bnode\s+(?:--input-type=\S+\s+)?-(?:e|-eval)\s+"[^"]*![a-zA-Z_$!(]/,
+    why: 'double-quoted `node -e "... !x ..."` triggers Bash history expansion and hangs the terminal session',
+    fix: "prefer a committed script in `tools/scripts/*.mjs`, or pass single-quoted `node -e '...'` after `set +H`",
   },
 ];
 

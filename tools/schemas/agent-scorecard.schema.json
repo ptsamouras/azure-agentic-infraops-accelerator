@@ -35,7 +35,7 @@
     },
     "model_family": {
       "type": "string",
-      "description": "Normalized family from classifyModel (e.g. claude-opus, gpt-5.5, gpt-codex, mai-code, unknown)."
+      "description": "Normalized family from classifyModel (e.g. claude-opus, gpt-5.6-terra, gpt-5.6-luna, mai-code, unknown)."
     },
     "step": {
       "type": ["number", "null"],
@@ -74,8 +74,8 @@
         "has_output_contract": { "type": "boolean" },
         "uses_apex_recall": { "type": "boolean" },
         "reads_skill_md": { "type": "boolean" },
-        "gpt55_sections_present": { "type": "array", "items": { "type": "string" } },
-        "gpt55_sections_missing": { "type": "array", "items": { "type": "string" } },
+        "outcome_sections_present": { "type": "array", "items": { "type": "string" } },
+        "outcome_sections_missing": { "type": "array", "items": { "type": "string" } },
         "model_family": { "type": "string" }
       }
     },
