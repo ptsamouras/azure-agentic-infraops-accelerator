@@ -11,7 +11,7 @@
  *     registry, expanding the `bicep` / `terraform` deploy split into
  *     two virtual entries.
  *   - buildAssignments: derive the model-catalog `assignments` block from
- *     agent/subagent frontmatter (the canonical source of truth).
+ *     explicit legacy agent/subagent frontmatter pins.
  */
 
 import { getAgents } from "./workspace-index.mjs";
@@ -28,6 +28,29 @@ export function normalizeModel(raw) {
   const v = Array.isArray(raw) ? raw[0] : raw;
   if (typeof v !== "string") return null;
   return v.replace(/ \(copilot\)$/i, "").trim();
+}
+
+export function normalizeModels(raw) {
+  if (raw === undefined || raw === null) return [];
+  const values = Array.isArray(raw) ? raw : [raw];
+  if (values.length === 0 || values.some((value) => typeof value !== "string" || !normalizeModel(value))) {
+    throw new TypeError("model must be a non-empty label or ordered array of non-empty labels");
+  }
+  return values.map((value) => normalizeModel(value));
+}
+
+export function modelLabels(raw) {
+  if (raw === undefined) return [];
+  const values = Array.isArray(raw) ? raw : [raw];
+  if (values.length === 0 || values.some((value) => typeof value !== "string" || !value.trim())) {
+    throw new TypeError("model must be a non-empty label or ordered array of non-empty labels");
+  }
+  return [...values];
+}
+
+export function catalogModelLabel(label, { handoff = false, models = {} } = {}) {
+  if (Object.hasOwn(models, label)) return label;
+  return handoff ? label.replace(/ \([^()]+\)$/, "") : label;
 }
 
 /**
@@ -58,9 +81,10 @@ function* expandRegistryEntry(key, entry) {
 }
 
 /**
- * Build the model-catalog `assignments` block from agent/subagent
- * frontmatter (the canonical source of truth). The `models` and
- * `governance` blocks are hand-maintained and not produced here.
+ * Build the model-catalog `assignments` block from explicit agent/subagent
+ * frontmatter pins. Active production definitions omit model pins, so their
+ * generated maps are empty. The `models` and `governance` blocks are
+ * hand-maintained and not produced here.
  *
  * @returns {{generated: boolean, generated_by: string, description: string,
  *            agents: Record<string,string>, subagents: Record<string,string>}}
@@ -71,8 +95,9 @@ export function buildAssignments() {
   const subs = {};
   const sorted = [...agents.entries()].sort(([a], [b]) => a.localeCompare(b));
   for (const [file, a] of sorted) {
-    const model = normalizeModel(a.frontmatter?.model);
-    if (!model) continue;
+    const raw = a.frontmatter?.model;
+    const model = Array.isArray(raw) ? raw[0] : raw;
+    if (typeof model !== "string" || !model.trim()) continue;
     if (a.isSubagent) subs[file] = model;
     else main[file] = model;
   }
@@ -80,7 +105,7 @@ export function buildAssignments() {
     generated: true,
     generated_by: "tools/scripts/generate-model-catalog.mjs",
     description:
-      "Auto-generated inventory of agent → model assignments derived from frontmatter (canonical source). Do not edit by hand; run `node tools/scripts/generate-model-catalog.mjs` or let the lefthook pre-commit hook refresh it when frontmatter changes.",
+      "Auto-generated inventory of explicit legacy agent → model pins. Active production definitions are unpinned, so their maps are intentionally empty. Do not edit by hand; run `node tools/scripts/generate-model-catalog.mjs`.",
     agents: main,
     subagents: subs,
   };
