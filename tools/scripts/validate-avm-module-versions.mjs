@@ -45,12 +45,12 @@ import { fileURLToPath } from "node:url";
 import { globSync } from "node:fs";
 import { Reporter } from "./_lib/reporter.mjs";
 import { resolveLatest, classifyPin, evaluatePinPolicy } from "./_lib/avm-module-resolver.mjs";
+import { createPinnedAvmBicepRegex, createAvmTerraformSourceRegex } from "./_lib/avm-patterns.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
-const BICEP_MODULE_RE =
-  /(['"])?(br\/public:avm\/(?:res|ptn)\/[a-z0-9-]+(?:\/[a-z0-9-]+)+):(\d+\.\d+\.\d+(?:-[a-z0-9.]+)?)\1?/gi;
-const TF_SOURCE_RE = /source\s*=\s*"(Azure\/avm-(?:res|ptn)-[a-z0-9-]+\/azurerm)"/gi;
+const BICEP_MODULE_RE = createPinnedAvmBicepRegex();
+const TF_SOURCE_RE = createAvmTerraformSourceRegex();
 const TF_VERSION_RE = /version\s*=\s*"([^"]+)"/i;
 
 function parseArgs(argv) {
@@ -287,10 +287,16 @@ async function main() {
       .map((p) => path.resolve(ROOT, p))
       .filter((p) => fs.existsSync(p));
   } else {
-    contractPaths = globSync("agent-output/*/04-iac-contract.json", {
-      cwd: ROOT,
-      absolute: true,
-    });
+    contractPaths = [
+      ...globSync("agent-output/*/04-iac-contract.json", {
+        cwd: ROOT,
+        absolute: true,
+      }),
+      ...globSync("agent-output/*/contracts/04-iac-contract.json", {
+        cwd: ROOT,
+        absolute: true,
+      }),
+    ];
     bicepPaths = globSync("infra/bicep/**/*.bicep", { cwd: ROOT, absolute: true });
     tfPaths = globSync("infra/terraform/**/*.tf", { cwd: ROOT, absolute: true });
   }

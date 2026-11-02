@@ -2,7 +2,6 @@ name: Bug Report
 description: Report an issue with templates, scripts, or documentation
 title: "[Bug]: "
 labels: ["bug"]
-assignees: []
 body:
   - type: markdown
     attributes:
@@ -21,9 +20,9 @@ body:
         - Bicep templates (infra/bicep/)
         - PowerShell scripts
         - Agent definitions (.github/agents/)
-        - Documentation (site/src/content/docs/, README files)
+        - Documentation (README files; published docs live in apex-docs)
         - GitHub Actions workflows
-        - MCP Server (tools/mcp-servers/azure-pricing/)
+        - MCP integration
         - Devcontainer configuration
         - Other
     validations:

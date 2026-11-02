@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createAjv } from "./_lib/ajv-validator.mjs";
 import { ARTIFACT_HEADINGS } from "./_lib/artifact-headings.mjs";
+import { extractH2Headings } from "./_lib/h2-parser.mjs";
 
 // ============================================================================
 // Shared utilities
@@ -30,19 +31,12 @@ function exists(relPath) {
   return fs.existsSync(path.resolve(process.cwd(), relPath));
 }
 
-function extractH2Headings(text) {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trimEnd())
-    .filter((line) => line.startsWith("## "));
-}
-
 // ============================================================================
 // Part 1: H2 Heading Sync Validator (was validate-h2-sync.mjs)
 // ============================================================================
 
-const SKILL_PATH = ".github/skills/azure-artifacts/SKILL.md";
-const SKILL_REFS_DIR = ".github/skills/azure-artifacts/references";
+const SKILL_PATH = ".github/skills/apex-azure-artifacts/SKILL.md";
+const SKILL_REFS_DIR = ".github/skills/apex-azure-artifacts/references";
 const H2_REF_PATH = ".github/instructions/azure-artifacts.instructions.md";
 const VALIDATOR_PATH = "tools/scripts/_lib/artifact-headings.mjs";
 
@@ -287,7 +281,7 @@ const TITLE_MISSING = "Missing Template or Agent";
 
 const GLOBAL_STRICTNESS = process.env.STRICTNESS;
 
-const CONSOLIDATED_SKILL = ".github/skills/azure-artifacts/SKILL.md";
+const CONSOLIDATED_SKILL = ".github/skills/apex-azure-artifacts/SKILL.md";
 
 const AGENTS = {
   "01-requirements.md": ".github/agents/02-requirements.agent.md",
@@ -297,21 +291,21 @@ const AGENTS = {
   "04-preflight-check.md": ".github/agents/06b-bicep-codegen.agent.md",
   "06-deployment-summary.md": ".github/agents/07b-bicep-deploy.agent.md",
   "05-implementation-reference.md": ".github/agents/06b-bicep-codegen.agent.md",
-  "07-design-document.md": ".github/skills/azure-artifacts/SKILL.md",
-  "07-operations-runbook.md": ".github/skills/azure-artifacts/SKILL.md",
-  "07-resource-inventory.md": ".github/skills/azure-artifacts/SKILL.md",
-  "07-backup-dr-plan.md": ".github/skills/azure-artifacts/SKILL.md",
-  "07-compliance-matrix.md": ".github/skills/azure-artifacts/SKILL.md",
-  "07-documentation-index.md": ".github/skills/azure-artifacts/SKILL.md",
+  "07-design-document.md": ".github/skills/apex-azure-artifacts/SKILL.md",
+  "07-operations-runbook.md": ".github/skills/apex-azure-artifacts/SKILL.md",
+  "07-resource-inventory.md": ".github/skills/apex-azure-artifacts/SKILL.md",
+  "07-backup-dr-plan.md": ".github/skills/apex-azure-artifacts/SKILL.md",
+  "07-compliance-matrix.md": ".github/skills/apex-azure-artifacts/SKILL.md",
+  "07-documentation-index.md": ".github/skills/apex-azure-artifacts/SKILL.md",
   "03-des-cost-estimate.md": ".github/agents/03-architect.agent.md",
-  "07-ab-cost-estimate.md": ".github/skills/azure-artifacts/SKILL.md",
+  "07-ab-cost-estimate.md": ".github/skills/apex-azure-artifacts/SKILL.md",
   "README.md": null,
   "09-lessons-learned.md": null,
-  // Gate companion file — sourced from workflow-engine, not azure-artifacts.
+  // Gate companion file — sourced from apex-workflow-engine, not azure-artifacts.
   "00-handoff.md": null,
 };
 
-const TEMPLATE_DIR = ".github/skills/azure-artifacts/templates";
+const TEMPLATE_DIR = ".github/skills/apex-azure-artifacts/templates";
 
 const TEMPLATES = {
   "01-requirements.md": `${TEMPLATE_DIR}/01-requirements.template.md`,
@@ -350,8 +344,8 @@ const DIAGRAM_ARTIFACT_EXPECTATIONS = {
   ],
   "07-design-document.md": [
     {
-      image: "./03-des-diagram.drawio.svg",
-      source: "./03-des-diagram.drawio",
+      image: "./03-des-diagram.png",
+      source: "./03-des-diagram.py",
     },
     {
       image: "./03-des-network-diagram.png",
@@ -440,7 +434,10 @@ function validateDiagramArtifactReferences(filePath, artifactName, text, reportF
   const expectedReferences = DIAGRAM_ARTIFACT_EXPECTATIONS[artifactName] ?? [];
 
   function refPresent(ref) {
-    return text.includes(ref) || text.includes(ref.replace(/^\.\//, ""));
+    const bare = ref.replace(/^\.\//, "");
+    return (
+      text.includes(ref) || text.includes(bare) || text.includes(`assets/${bare}`) || text.includes(`./assets/${bare}`)
+    );
   }
 
   for (const expected of expectedReferences) {
@@ -457,16 +454,20 @@ function validateDiagramArtifactReferences(filePath, artifactName, text, reportF
 function validateDiagramArtifactFiles(filePath, artifactName, reportFn = warn) {
   const expectedReferences = DIAGRAM_ARTIFACT_EXPECTATIONS[artifactName] ?? [];
   const artifactDir = path.dirname(filePath);
+  const existsInDirOrAssets = (rel) => {
+    const bare = rel.replace(/^\.\//, "");
+    return (
+      exists(path.normalize(path.join(artifactDir, bare))) ||
+      exists(path.normalize(path.join(artifactDir, "assets", bare)))
+    );
+  };
 
   for (const expected of expectedReferences) {
-    const imagePath = path.normalize(path.join(artifactDir, expected.image.replace(/^\.\//, "")));
-    const sourcePath = path.normalize(path.join(artifactDir, expected.source.replace(/^\.\//, "")));
-
-    if (!exists(imagePath)) {
+    if (!existsInDirOrAssets(expected.image)) {
       reportFn(`${filePath} requires diagram image artifact: ${expected.image}`, { filePath, line: 1 });
     }
 
-    if (!exists(sourcePath)) {
+    if (!existsInDirOrAssets(expected.source)) {
       reportFn(`${filePath} requires diagram source artifact: ${expected.source}`, { filePath, line: 1 });
     }
 
@@ -474,8 +475,7 @@ function validateDiagramArtifactFiles(filePath, artifactName, reportFn = warn) {
     // (issue #421 — emitted automatically by `scripts/diagram_io.py`).
     if (expected.image.endsWith(".png")) {
       const svgSibling = expected.image.replace(/\.png$/, ".svg");
-      const svgPath = path.normalize(path.join(artifactDir, svgSibling.replace(/^\.\//, "")));
-      if (!exists(svgPath)) {
+      if (!existsInDirOrAssets(svgSibling)) {
         warn(`${filePath} is missing recommended SVG sibling: ${svgSibling} (generate via scripts/diagram_io.py)`, {
           filePath,
           line: 1,
@@ -610,7 +610,7 @@ function validateTemplate(artifactName) {
   }
 
   const text = readText(templatePath);
-  const h2 = extractH2Headings(text);
+  const h2 = extractH2Headings(text, { prefixed: true });
   const required = ARTIFACT_HEADINGS[artifactName];
   const coreFound = h2.filter((h) => required.includes(h));
 
@@ -687,11 +687,11 @@ function validateAgentLinks() {
     const relativeTemplatePath = path.relative(path.dirname(agentPath), templatePath);
 
     const refsTemplate = agentText.includes(relativeTemplatePath);
-    const refsSkill = agentText.includes("azure-artifacts") || agentText.includes("azure-defaults");
+    const refsSkill = agentText.includes("apex-azure-artifacts") || agentText.includes("apex-azure-defaults");
 
     if (!refsTemplate && !refsSkill) {
       error(
-        `Agent ${agentPath} must reference template ${relativeTemplatePath} or azure-artifacts skill. Fix: Add 'Read .github/skills/azure-artifacts/SKILL.md' to the agent body.`,
+        `Agent ${agentPath} must reference template ${relativeTemplatePath} or apex-azure-artifacts skill. Fix: Add 'Read .github/skills/apex-azure-artifacts/SKILL.md' to the agent body.`,
         { filePath: agentPath, line: 1 },
       );
     }
@@ -712,7 +712,7 @@ function validateNoEmbeddedSkeletons() {
       const foundInBlock = required.filter((h) => block.includes(h));
       if (foundInBlock.length >= 3) {
         error(
-          `Agent ${agentPath} appears to embed a ${artifactName} skeleton (found ${foundInBlock.length} headings in a fenced block). Fix: Remove the embedded H2 skeleton; agents should reference the azure-artifacts skill instead.`,
+          `Agent ${agentPath} appears to embed a ${artifactName} skeleton (found ${foundInBlock.length} headings in a fenced block). Fix: Remove the embedded H2 skeleton; agents should reference the apex-azure-artifacts skill instead.`,
           { filePath: agentPath, line: 1 },
         );
         break;
@@ -805,7 +805,7 @@ function validateArtifactCompliance(relPath) {
   if (!exists(relPath)) return;
 
   const text = readText(relPath);
-  const h2 = extractH2Headings(text);
+  const h2 = extractH2Headings(text, { prefixed: true });
   const required = ARTIFACT_HEADINGS[artifactType];
   const anchor = required[required.length - 1];
   const optionals = OPTIONAL_ALLOWED[artifactType] || [];
@@ -956,8 +956,8 @@ function findGovernanceJsonArtifacts() {
       if (!entry.isFile()) return false;
       if (entry.name !== GOVERNANCE_JSON_BASENAME) return false;
       const dir = entry.parentPath ?? entry.path;
-      const rel = path.relative(baseDir, dir);
-      if (rel.startsWith("_baselines")) return false;
+      const rel = path.relative(baseDir, dir).split(path.sep).join("/");
+      if (rel.startsWith("_baselines") || /(?:^|\/)_meta(?:\/|$)/.test(rel)) return false;
       return true;
     })
     .map((entry) => {
@@ -1021,9 +1021,9 @@ function findArtifacts() {
       const dir = entry.parentPath ?? entry.path;
       // Skip the top-level agent-output/README.md
       if (entry.name === "README.md" && dir === baseDir) return false;
-      // Skip historical baseline snapshots
-      const rel = path.relative(baseDir, dir);
-      if (rel.startsWith("_baselines")) return false;
+      // Skip historical baseline snapshots and _meta/ subfolders
+      const rel = path.relative(baseDir, dir).split(path.sep).join("/");
+      if (rel.startsWith("_baselines") || /(?:^|\/)_meta(?:\/|$)/.test(rel)) return false;
       return true;
     })
     .map((entry) => {
@@ -1155,10 +1155,6 @@ function getArtifactType(filePath) {
   return null;
 }
 
-function extractH2HeadingsFromContent(content) {
-  return content.match(/^## .+$/gm) || [];
-}
-
 function analyzeArtifact(filePath) {
   const artifactType = getArtifactType(filePath);
   if (!artifactType) {
@@ -1166,7 +1162,7 @@ function analyzeArtifact(filePath) {
   }
 
   const content = fs.readFileSync(filePath, "utf-8");
-  const actualH2s = extractH2HeadingsFromContent(content);
+  const actualH2s = extractH2Headings(content, { prefixed: true });
   const requiredH2s = ARTIFACT_HEADINGS[artifactType];
 
   const missing = requiredH2s.filter((h) => !actualH2s.some((a) => headingMatch(a, h)));
