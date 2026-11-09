@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/jonathan-vella/apex/schemas/governance-baseline.schema.json",
   "title": "APEX Governance Baseline",
-  "description": "Shape of .github/data/governance-policy-baseline.json produced by the governance-policy-baseline workflow. Wraps per-subscription governance-constraints-v1 envelopes.",
+  "description": "Decompressed shape of .github/data/governance-policy-baseline.json.gz produced by the governance-policy-baseline workflow. Wraps per-subscription governance-constraints-v1 envelopes.",
   "type": "object",
   "required": [
     "schema_version",
@@ -16,10 +16,33 @@
     "subscriptions"
   ],
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": { "required": ["baseline_kind"] },
+      "then": { "required": ["alz_library_ref", "azure_policy_ref", "generated_at"] }
+    }
+  ],
   "properties": {
     "schema_version": {
       "type": "string",
       "const": "governance-baseline-v1"
+    },
+    "baseline_kind": {
+      "type": "string",
+      "description": "Absent for a tenant baseline collected by the workflow. alz-corp-default marks the shipped, offline-generated ALZ Corp policy set, which is assumed governance and not verified against any tenant.",
+      "enum": ["alz-corp-default"]
+    },
+    "alz_library_ref": {
+      "type": "string",
+      "description": "Azure-Landing-Zones-Library tag the baseline was generated from."
+    },
+    "azure_policy_ref": {
+      "type": "string",
+      "description": "Azure/azure-policy commit the built-in definitions were read from."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "management_group_id": {
       "type": "string",
